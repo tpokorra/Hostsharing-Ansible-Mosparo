@@ -1,0 +1,49 @@
+---
+- hosts: mosparo
+  become_user: "{{pac}}-{{user}}"
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+
+  tasks:
+  - name: check if backup file exists
+    become: yes
+    stat: 
+      path: "/home/pacs/{{pac}}/users/{{user}}/Backup-{{ ansible_date_time.date }}.tar.gz"
+    register: backup_done
+
+  - name: backup the config and var
+    become: yes
+    archive:
+      path:
+      - "/home/pacs/{{pac}}/users/{{user}}/mosparo/config/env.mosparo.php"
+      - "/home/pacs/{{pac}}/users/{{user}}/mosparo/var/*"
+      exclude_path:
+      - "/home/pacs/{{pac}}/users/{{user}}/mosparo/var/cache"
+      dest: "/home/pacs/{{pac}}/users/{{user}}/Backup-{{ ansible_date_time.date }}.tar.gz"
+    when: backup_done.stat.exists == False
+
+  - name: drop mosparo directory
+    become: yes
+    file:
+      path: "/home/pacs/{{pac}}/users/{{user}}/mosparo"
+      state: absent
+
+  - name: recreate mosparo directory
+    become: yes
+    file:
+      path: "/home/pacs/{{pac}}/users/{{user}}/mosparo"
+      state: directory
+
+  - name: update mosparo
+    become: yes
+    unarchive:
+      src: https://github.com/mosparo/mosparo/releases/download/v{{mosparo_version}}/mosparo-stable-v{{mosparo_version}}.zip
+      remote_src: yes
+      dest: "/home/pacs/{{pac}}/users/{{user}}/mosparo"
+
+  - name: restore the var directory and config file
+    become: yes
+    unarchive:
+      src: "/home/pacs/{{pac}}/users/{{user}}/Backup-{{ ansible_date_time.date }}.tar.gz"
+      remote_src: true
+      dest: "/home/pacs/{{pac}}/users/{{user}}/mosparo/"

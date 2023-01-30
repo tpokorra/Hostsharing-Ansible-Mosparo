@@ -1,0 +1,116 @@
+---
+- hosts: mosparo
+  become_user: "{{pac}}-{{user}}"
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+    # see https://docs.ansible.com/ansible/latest/user_guide/become.html#risks-of-becoming-an-unprivileged-user
+    ansible_common_remote_group: "{{pac}}"
+    ansible_remote_tmp: ~/.ansible/tmp
+
+  tasks:
+  - name: Create user, domain and database
+    import_tasks: tasks/hs_basis.yml
+
+  #################################
+  ## install requirements
+  #################################
+  - name: Install composer
+    import_tasks: tasks/hs_composer.yml
+  - name: Install lastest PHP
+    import_tasks: tasks/hs_php8_buster.yml
+
+  ##################################
+  ## create directories
+  ##################################
+  - name: create directory var/log
+    become: yes
+    become_user: "{{pac}}-{{user}}"
+    file:
+      path: "/home/pacs/{{pac}}/users/{{user}}/var/log"
+      state: directory
+
+  - name: create directory var/tmp
+    become: yes
+    become_user: "{{pac}}-{{user}}"
+    file:
+      path: "/home/pacs/{{pac}}/users/{{user}}/var/tmp"
+      state: directory
+
+  - name: create directory mosparo
+    become: yes
+    become_user: "{{pac}}-{{user}}"
+    file:
+      path: "/home/pacs/{{pac}}/users/{{user}}/mosparo"
+      state: directory
+
+  ##################################
+  ## configuration
+  ##################################
+
+  - name: upload the password for the mysql database
+    become: yes
+    template:
+      src: "templates/my.cnf"
+      dest: "/home/pacs/{{pac}}/users/{{user}}/.my.cnf"
+      mode: "700"
+
+  #########################
+  ## install mosparo
+  #########################
+  - name: install mosparo
+    become: yes
+    unarchive:
+      src: https://github.com/mosparo/mosparo/releases/download/v{{mosparo_version}}/mosparo-stable-v{{mosparo_version}}.zip
+      remote_src: yes
+      dest: "/home/pacs/{{pac}}/users/{{user}}/mosparo"
+
+  ########################
+  ## setup the cron jobs
+  ########################
+  # see https://documentation.mosparo.io/docs/installation/cron_jobs
+  - name: cronjob clean up the database
+    become: yes
+    cron:
+      name: "database_cleanup"
+      minute: "27"
+      hour: "*/2"
+      job: "php8.1 /home/pacs/{{pac}}/users/{{user}}/mosparo/bin/console mosparo:cleanup-database"
+
+  - name: cronjob refresh the rulesets
+    become: yes
+    cron:
+      name: "rulesets_refresh"
+      minute: "36"
+      hour: "3"
+      job: "php8.1 /home/pacs/{{pac}}/users/{{user}}/mosparo/bin/console mosparo:rulesets:refresh"
+
+  ########################
+  ## setup the apache site
+  ########################
+
+  - name: drop htdocs-ssl .htaccess
+    become: yes
+    file:
+       path: "/home/pacs/{{pac}}/users/{{user}}/doms/{{domain}}/htdocs-ssl/.htaccess"
+       state: absent
+  - name: drop htdocs-ssl
+    become: yes
+    file:
+       path: "/home/pacs/{{pac}}/users/{{user}}/doms/{{domain}}/htdocs-ssl"
+       state: absent
+  - name: create symbolic link for htdocs-ssl
+    become: yes
+    file:
+      src: "/home/pacs/{{pac}}/users/{{user}}/mosparo/public"
+      dest: "/home/pacs/{{pac}}/users/{{user}}/doms/{{domain}}/htdocs-ssl"
+      state: link
+  - name: upload .htaccess file
+    become: yes
+    template:
+      src: "templates/htaccess"
+      dest: "/home/pacs/{{pac}}/users/{{user}}/doms/{{domain}}/.htaccess"
+  - name: upload php.ini
+    become: yes
+    template:
+      src: "templates/php.ini"
+      dest: "/home/pacs/{{pac}}/users/{{user}}/doms/{{domain}}/fastcgi-ssl"

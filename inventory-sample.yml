@@ -1,0 +1,18 @@
+mosparo:
+  hosts:
+    xyz00:
+      ansible_ssh_host: xyz00.hostsharing.net
+      ansible_ssh_user: xyz00
+      pac: xyz00
+      domain: captcha.example.org
+      user: mosparo
+      password: testpassw0rd_changeme
+
+      db_name: mosparo
+      db_user: mosparo
+      db_password: testpassw0rd2_changeme
+
+      mosparo_version: 0.3.3
+
+      # see https://getcomposer.org/download/
+      composer_version: 2.5.1
