@@ -12,7 +12,7 @@ mosparo:
       db_user: mosparo
       db_password: testpassw0rd2_changeme
 
-      mosparo_version: 0.3.3
+      mosparo_version: 0.3.4
 
       # see https://getcomposer.org/download/
       composer_version: 2.5.1
