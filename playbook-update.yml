@@ -52,6 +52,7 @@
     become: yes
     shell: |
       yes | ./bin/console doctrine:migrations:migrate
+      ./bin/console cache:clear
     args:
       executable: /bin/bash
       chdir: "/home/pacs/{{pac}}/users/{{user}}/mosparo"
