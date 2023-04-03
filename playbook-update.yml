@@ -47,3 +47,11 @@
       src: "/home/pacs/{{pac}}/users/{{user}}/Backup-{{ ansible_date_time.date }}.tar.gz"
       remote_src: true
       dest: "/home/pacs/{{pac}}/users/{{user}}/mosparo/"
+
+  - name: apply database migrations
+    become: yes
+    shell: |
+      yes | ./bin/console doctrine:migrations:migrate
+    args:
+      executable: /bin/bash
+      chdir: "/home/pacs/{{pac}}/users/{{user}}/mosparo"
